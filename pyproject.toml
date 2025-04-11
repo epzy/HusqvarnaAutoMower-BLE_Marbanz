@@ -9,7 +9,8 @@ description = "An unofficial reverse engineered Husqvarna Automower Connect BLE 
 readme = "README.md"
 requires-python = ">=3.12"
 authors     = [
-    {name = "Alistair Francis", email = "alistair@alistair23.me"}
+    {name = "Alistair Francis", email = "alistair@alistair23.me"},
+    {name = "Marbanz", email = "martin.gilmozzi2005@gmail.com"}
 ]
 classifiers = [
   "Environment :: Console",

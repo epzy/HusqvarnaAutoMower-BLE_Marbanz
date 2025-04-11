@@ -92,6 +92,13 @@ class Mower(BLEClient):
     async def battery_level(self) -> int | None:
         """Query the mower battery level"""
         return await self.command("GetBatteryLevel")
+    
+    async def mower_mode(self) -> ModeOfOperation | None:
+        """Query the mower mode"""
+        mode = await self.command("GetMode")
+        if mode is None:
+            return None
+        return ModeOfOperation(mode)
 
     async def mower_state(self) -> MowerState | None:
         """Query the mower state"""
@@ -113,7 +120,14 @@ class Mower(BLEClient):
         if activity is None:
             return None
         return MowerActivity(activity)
-
+    
+    async def mower_operator_status(self) -> bool | None:
+        """Query if the operator is logged in"""
+        operator_status = await self.command("IsOperatorLoggedIn")
+        if operator_status is None:
+            return None
+        return operator_status == 1
+    
     async def mower_override(self, duration_hours: float = 3.0) -> None:
         """
         Force the mower to run for the specified duration in hours.
@@ -139,6 +153,20 @@ class Mower(BLEClient):
 
     async def mower_park(self):
         await self.command("SetOverrideParkUntilNextStart")
+
+        # Request trigger to start, the response validation is expected to fail
+        await self.command("StartTrigger")
+
+    async def mower_park_indefinitely(self):
+        await self.command("ClearOverride")
+        await self.command("SetMode", mode=ModeOfOperation.HOME)
+
+        # Request trigger to start, the response validation is expected to fail
+        await self.command("StartTrigger")
+
+    async def mower_auto(self):
+        await self.command("ClearOverride")
+        await self.command("SetMode", mode=ModeOfOperation.AUTO)
 
         # Request trigger to start, the response validation is expected to fail
         await self.command("StartTrigger")
@@ -190,6 +218,10 @@ async def main(mower: Mower):
     battery_level = await mower.battery_level()
     print("Battery is: " + str(battery_level) + "%")
 
+    mode = await mower.mower_mode()
+    if mode is not None:
+        print("Mower mode: " + mode.name)
+
     state = await mower.mower_state()
     if state is not None:
         print("Mower state: " + state.name)
@@ -197,6 +229,10 @@ async def main(mower: Mower):
     activity = await mower.mower_activity()
     if activity is not None:
         print("Mower activity: " + activity.name)
+
+    operator_status = await mower.mower_operator_status()
+    if operator_status is not None:
+        print("Operator status: " + str(operator_status))
 
     next_start_time = await mower.mower_next_start_time()
     if next_start_time:
@@ -213,18 +249,6 @@ async def main(mower: Mower):
 
     mower_name = await mower.command("GetUserMowerNameAsAsciiString")
     print("Mower name: " + mower_name)
-
-    # print("Running for 3 hours")
-    # await mower.mower_override()
-
-    # print("Pause")
-    # await mower.mower_pause()
-
-    # print("Resume")
-    # await mower.mower_resume()
-
-    # activity = await mower.mower_activity()
-    # print("Mower activity: " + activity)
 
     # If command argument passed then send command
     if args.command:
