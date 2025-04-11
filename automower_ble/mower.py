@@ -192,7 +192,7 @@ class Mower(BLEClient):
 
 
 async def main(mower: Mower):
-    device = await BleakScanner.find_device_by_address(mower.address)
+    device = await BleakScanner.find_device_by_address(mower.address, timeout=30)
 
     if device is None:
         print("Unable to connect to device address: " + mower.address)
