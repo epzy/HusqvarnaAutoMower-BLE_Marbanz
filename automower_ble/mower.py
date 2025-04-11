@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class Mower(BLEClient):
-    def __init__(self, channel_id: int, address, pin=None):
+    def __init__(self, channel_id: int, address: str, pin: int | None = None):
         super().__init__(channel_id, address, pin)
 
     async def command(self, command_name: str, **kwargs):
@@ -83,16 +83,22 @@ class Mower(BLEClient):
 
         return model_information.model
 
-    async def is_charging(self) -> bool:
-        if await mower.command("IsCharging"):
-            return True
-        else:
-            return False
+    async def get_serial_number(self) -> str | None:
+        """Get the mower serial number"""
+        serial_number = await self.command("GetSerialNumber")
+        if serial_number is None:
+            return None
+        return serial_number
 
     async def battery_level(self) -> int | None:
         """Query the mower battery level"""
         return await self.command("GetBatteryLevel")
-    
+
+    async def is_charging(self) -> bool:
+        """Check if the mower is charging."""
+        response = await self.command("IsCharging")
+        return bool(response)
+
     async def mower_mode(self) -> ModeOfOperation | None:
         """Query the mower mode"""
         mode = await self.command("GetMode")
@@ -107,6 +113,13 @@ class Mower(BLEClient):
             return None
         return MowerState(state)
 
+    async def mower_activity(self) -> MowerActivity | None:
+        """Query the mower activity"""
+        activity = await self.command("GetActivity")
+        if activity is None:
+            return None
+        return MowerActivity(activity)
+
     async def mower_next_start_time(self) -> datetime | None:
         """Query the mower next start time"""
         next_start_time = await self.command("GetNextStartTime")
@@ -114,20 +127,6 @@ class Mower(BLEClient):
             return None
         return datetime.fromtimestamp(next_start_time, timezone.utc)
 
-    async def mower_activity(self) -> MowerActivity | None:
-        """Query the mower activity"""
-        activity = await self.command("GetActivity")
-        if activity is None:
-            return None
-        return MowerActivity(activity)
-    
-    async def mower_operator_status(self) -> bool | None:
-        """Query if the operator is logged in"""
-        operator_status = await self.command("IsOperatorLoggedIn")
-        if operator_status is None:
-            return None
-        return operator_status == 1
-    
     async def mower_override(self, duration_hours: float = 3.0) -> None:
         """
         Force the mower to run for the specified duration in hours.
@@ -191,97 +190,90 @@ class Mower(BLEClient):
         )
 
 
-async def main(mower: Mower):
+async def main(mower: Mower, args: argparse.Namespace):
     device = await BleakScanner.find_device_by_address(mower.address, timeout=30)
 
     if device is None:
-        print("Unable to connect to device address: " + mower.address)
-        print(
-            "Please make sure the device address is correct, the device is powered on and nearby"
-        )
+        print(f"Unable to connect to device address: {mower.address}")
+        print("Please make sure the device address is correct, the device is powered on, and nearby.")
         return
 
     await mower.connect(device)
 
-    manufacturer = await mower.get_manufacturer()
-    print("Mower manufacturer: " + manufacturer)
+    try:
+        manufacturer = await mower.get_manufacturer()
+        print(f"Mower manufacturer: {manufacturer or 'Unknown'}")
 
-    model = await mower.get_model()
-    print("Mower model: " + model)
+        model = await mower.get_model()
+        print(f"Mower model: {model or 'Unknown'}")
 
-    charging = await mower.is_charging()
-    if charging:
-        print("Mower is charging")
-    else:
-        print("Mower is not charging")
+        serial_number = await mower.get_serial_number()
+        print(f"Mower serial number: {serial_number or 'Unknown'}")
 
-    battery_level = await mower.battery_level()
-    print("Battery is: " + str(battery_level) + "%")
+        battery_level = await mower.battery_level()
+        print(f"Battery is: {battery_level}%")
 
-    mode = await mower.mower_mode()
-    if mode is not None:
-        print("Mower mode: " + mode.name)
+        charging = await mower.is_charging()
+        print("Mower is charging" if charging else "Mower is not charging")
 
-    state = await mower.mower_state()
-    if state is not None:
-        print("Mower state: " + state.name)
+        mode = await mower.mower_mode()
+        print(f"Mower mode: {mode.name if mode else 'Unknown'}")
 
-    activity = await mower.mower_activity()
-    if activity is not None:
-        print("Mower activity: " + activity.name)
+        state = await mower.mower_state()
+        print(f"Mower state: {state.name if state else 'Unknown'}")
 
-    operator_status = await mower.mower_operator_status()
-    if operator_status is not None:
-        print("Operator status: " + str(operator_status))
+        activity = await mower.mower_activity()
+        print(f"Mower activity: {activity.name if activity else 'Unknown'}")
 
-    next_start_time = await mower.mower_next_start_time()
-    if next_start_time:
-        print("Next start time: " + next_start_time.strftime("%Y-%m-%d %H:%M:%S"))
-    else:
-        print("No next start time")
+        next_start_time = await mower.mower_next_start_time()
+        if next_start_time:
+            print(f"Next start time: {next_start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        else:
+            print("No next start time")
 
-    statuses = await mower.command("GetAllStatistics")
-    for status, value in statuses.items():
-        print(status, value)
+        statuses = await mower.command("GetAllStatistics")
+        if statuses:
+            for status, value in statuses.items():
+                print(f"{status}: {value}")
 
-    serial_number = await mower.command("GetSerialNumber")
-    print("Serial number: " + str(serial_number))
+        mower_name = await mower.command("GetUserMowerNameAsAsciiString")
+        print(f"Mower name: {mower_name or 'Unknown'}")
 
-    mower_name = await mower.command("GetUserMowerNameAsAsciiString")
-    print("Mower name: " + mower_name)
+        if args.command:
+            print(f"Sending command to control mower ({args.command})")
+            match args.command:
+                case "park":
+                    print("command=park")
+                    cmd_result = await mower.mower_park()
+                case "pause":
+                    print("command=pause")
+                    cmd_result = await mower.mower_pause()
+                case "resume":
+                    print("command=resume")
+                    cmd_result = await mower.mower_resume()
+                case "override":
+                    print("command=override")
+                    cmd_result = await mower.mower_override()
+                case _:
+                    print(f"command=??? (Unknown command: {args.command})")
+                    cmd_result = None
+            print(f"command result = {cmd_result}")
 
-    # If command argument passed then send command
-    if args.command:
-        print("Sending command to control mower (" + args.command + ")")
-        match args.command:
-            case "park":
-                print("command=park")
-                cmd_result = await mower.mower_park()
-            case "pause":
-                print("command=pause")
-                cmd_result = await mower.mower_pause()
-            case "resume":
-                print("command=resume")
-                cmd_result = await mower.mower_resume()
-            case "override":
-                print("command=override")
-                cmd_result = await mower.mower_override()
-            case _:
-                print("command=??? (Unknown command: " + args.command + ")")
-        print("command result = " + str(cmd_result))
+        last_message = await mower.command("GetMessage", messageId=0)
+        if last_message:
+            print("Last message: ")
+            print(
+                "\t"
+                + datetime.fromtimestamp(last_message["time"], timezone.utc).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            )
+            print("\t" + ErrorCodes(last_message["code"]).name)
+        else:
+            print("No last message available.")
 
-    # moved last message after command, this seems to cause all future commands/queries to fail
-    last_message = await mower.command("GetMessage", messageId=0)
-    print("Last message: ")
-    print(
-        "\t"
-        + datetime.fromtimestamp(last_message["time"], timezone.utc).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-    )
-    print("\t" + ErrorCodes(last_message["code"]).name)
-
-    await mower.disconnect()
+    finally:
+        await mower.disconnect()
 
 
 if __name__ == "__main__":
@@ -292,7 +284,7 @@ if __name__ == "__main__":
     device_group.add_argument(
         "--address",
         metavar="<address>",
-        help="the Bluetooth address of the Automower device to connect to",
+        help="The Bluetooth address of the Automower device to connect to.",
     )
 
     parser.add_argument(
@@ -307,7 +299,7 @@ if __name__ == "__main__":
         "--command",
         metavar="<command>",
         default=None,
-        help="Send command to control mower (one of resume, pause, park or override)",
+        help="Send command to control mower (one of resume, pause, park, or override).",
     )
 
     args = parser.parse_args()
@@ -320,4 +312,4 @@ if __name__ == "__main__":
         format="%(asctime)-15s %(name)-8s %(levelname)s: %(message)s",
     )
 
-    asyncio.run(main(mower))
+    asyncio.run(main(mower, args))
