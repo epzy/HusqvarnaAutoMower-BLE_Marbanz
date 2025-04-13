@@ -2,7 +2,7 @@ from enum import IntEnum
 
 
 class ErrorCodes(IntEnum):
-    UNEXPECTED_ERROR = 0
+    NO_ERROR = 0
     OUTSIDE_WORKING_AREA = 1
     NO_LOOP_SIGNAL = 2
     WRONG_LOOP_SIGNAL = 3
