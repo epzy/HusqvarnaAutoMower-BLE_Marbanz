@@ -272,7 +272,7 @@ class BLEClient:
 
         self.queue = asyncio.Queue()
 
-        with files("automower_ble").joinpath("protocol.json").open("r") as f:
+        with files("husqvarna_automower_ble").joinpath("protocol.json").open("r") as f:
             self.protocol = json.load(f)  # Load the JSON file
 
     async def _get_response(self):
