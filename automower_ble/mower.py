@@ -95,7 +95,7 @@ class Mower(BLEClient):
         name = await self.command("GetUserMowerNameAsAsciiString")
         if name is None:
             return None
-        return name.decode("ascii")
+        return name
 
     async def battery_level(self) -> int | None:
         """Query the mower battery level"""
