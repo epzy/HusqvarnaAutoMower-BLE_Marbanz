@@ -373,7 +373,6 @@ class BLEClient:
 
         Returns True on success
         """
-        logger.info("starting scan...")
 
         if device is None:
             logger.error("could not find device with address '%s'", self.address)
@@ -450,6 +449,7 @@ class BLEClient:
         ### TODO: Check response
 
         if self.pin is not None:
+            logger.info("Entering operator pin")
             command = Command(self.channel_id, self.protocol["EnterOperatorPin"])
             request = command.generate_request(code=self.pin)
             response = await self._request_response(request)

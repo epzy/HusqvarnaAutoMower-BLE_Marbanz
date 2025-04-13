@@ -89,6 +89,13 @@ class Mower(BLEClient):
         if serial_number is None:
             return None
         return serial_number
+    
+    async def mower_name(self) -> str | None:
+        """Query the mower name"""
+        name = await self.command("GetUserMowerNameAsAsciiString")
+        if name is None:
+            return None
+        return name.decode("ascii")
 
     async def battery_level(self) -> int | None:
         """Query the mower battery level"""
@@ -119,6 +126,13 @@ class Mower(BLEClient):
         if activity is None:
             return None
         return MowerActivity(activity)
+    
+    async def mower_error(self) -> ErrorCodes | None:
+        """Query the mower error"""
+        error = await self.command("GetError")
+        if error is None:
+            return None
+        return ErrorCodes(error)
 
     async def mower_next_start_time(self) -> datetime | None:
         """Query the mower next start time"""
@@ -126,6 +140,32 @@ class Mower(BLEClient):
         if next_start_time is None or next_start_time == 0:
             return None
         return datetime.fromtimestamp(next_start_time, timezone.utc)
+    
+    async def mower_statistics(self) -> dict | None:
+        """Query the mower statistics"""
+        stats = await self.command("GetAllStatistics")
+        if stats is None:
+            return None
+        return stats
+    
+    async def get_task(self, taskid: int) -> TaskInformation | None:
+        """
+        Get information about a specific task
+        """
+        task = await self.command("GetTask", taskId=taskid)
+        if task is None:
+            return None
+        return TaskInformation(
+            task["start"],
+            task["duration"],
+            task["useOnMonday"],
+            task["useOnTuesday"],
+            task["useOnWednesday"],
+            task["useOnThursday"],
+            task["useOnFriday"],
+            task["useOnSaturday"],
+            task["useOnSunday"],
+        )
 
     async def mower_override(self, duration_hours: float = 3.0) -> None:
         """
@@ -170,25 +210,6 @@ class Mower(BLEClient):
         # Request trigger to start, the response validation is expected to fail
         await self.command("StartTrigger")
 
-    async def get_task(self, taskid: int) -> TaskInformation | None:
-        """
-        Get information about a specific task
-        """
-        task = await self.command("GetTask", taskId=taskid)
-        if task is None:
-            return None
-        return TaskInformation(
-            task["start"],
-            task["duration"],
-            task["useOnMonday"],
-            task["useOnTuesday"],
-            task["useOnWednesday"],
-            task["useOnThursday"],
-            task["useOnFriday"],
-            task["useOnSaturday"],
-            task["useOnSunday"],
-        )
-
 
 async def main(mower: Mower, args: argparse.Namespace):
     device = await BleakScanner.find_device_by_address(mower.address, timeout=30)
@@ -210,6 +231,9 @@ async def main(mower: Mower, args: argparse.Namespace):
         serial_number = await mower.get_serial_number()
         print(f"Mower serial number: {serial_number or 'Unknown'}")
 
+        name = await mower.mower_name()
+        print(f"Mower name: {name or 'Unknown'}")
+
         battery_level = await mower.battery_level()
         print(f"Battery is: {battery_level}%")
 
@@ -217,13 +241,16 @@ async def main(mower: Mower, args: argparse.Namespace):
         print("Mower is charging" if charging else "Mower is not charging")
 
         mode = await mower.mower_mode()
-        print(f"Mower mode: {mode.name if mode else 'Unknown'}")
+        print(f"Mower mode: {mode.name if mode is not None else 'Unknown'}")
 
         state = await mower.mower_state()
-        print(f"Mower state: {state.name if state else 'Unknown'}")
+        print(f"Mower state: {state.name if state is not None else 'Unknown'}")
 
         activity = await mower.mower_activity()
-        print(f"Mower activity: {activity.name if activity else 'Unknown'}")
+        print(f"Mower activity: {activity.name if activity is not None else 'Unknown'}")
+
+        error = await mower.mower_error()
+        print(f"Mower error: {error.name if error is not None else 'Unknown'}")
 
         next_start_time = await mower.mower_next_start_time()
         if next_start_time:
@@ -231,13 +258,13 @@ async def main(mower: Mower, args: argparse.Namespace):
         else:
             print("No next start time")
 
-        statuses = await mower.command("GetAllStatistics")
-        if statuses:
-            for status, value in statuses.items():
-                print(f"{status}: {value}")
-
-        mower_name = await mower.command("GetUserMowerNameAsAsciiString")
-        print(f"Mower name: {mower_name or 'Unknown'}")
+        statistics = await mower.mower_statistics()
+        if statistics:
+            print("Mower statistics:")
+            for key, value in statistics.items():
+                print(f"  {key}: {value}")
+        else:
+            print("No statistics available")
 
         if args.command:
             print(f"Sending command to control mower ({args.command})")
@@ -258,19 +285,6 @@ async def main(mower: Mower, args: argparse.Namespace):
                     print(f"command=??? (Unknown command: {args.command})")
                     cmd_result = None
             print(f"command result = {cmd_result}")
-
-        last_message = await mower.command("GetMessage", messageId=0)
-        if last_message:
-            print("Last message: ")
-            print(
-                "\t"
-                + datetime.fromtimestamp(last_message["time"], timezone.utc).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-            )
-            print("\t" + ErrorCodes(last_message["code"]).name)
-        else:
-            print("No last message available.")
 
     finally:
         await mower.disconnect()
