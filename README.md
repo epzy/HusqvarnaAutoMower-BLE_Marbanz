@@ -14,7 +14,7 @@ Details on the original reverse-engineering process are available here:
 You can install this library directly from the repository:
 
 ```bash
-pip install git+https://github.com/Marbanz/HusqvarnaAutoMower-BLE@main
+pip install git+https://github.com/Marbanz/HusqvarnaAutoMower-BLE.git@main
 ```
 
 > **Note:** This library is under active development and may not yet be available on PyPI.
