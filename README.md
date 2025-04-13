@@ -14,7 +14,7 @@ Details on the original reverse-engineering process are available here:
 You can install this library directly from the repository:
 
 ```bash
-pip install git+https://github.com/Marbanz/AutoMower-BLE.git
+pip install git+https://github.com/Marbanz/HusqvarnaAutoMower-BLE@main
 ```
 
 > **Note:** This library is under active development and may not yet be available on PyPI.
@@ -27,12 +27,12 @@ You can test querying data from your Automower using the following commands:
 
 ### Query Mower Data
 ```bash
-python -m automower_ble.mower --address D8:B6:73:40:07:37
+python -m husqvarna_automower_ble.mower --address D8:B6:73:40:07:37
 ```
 
 ### Send Commands to the Mower
 ```bash
-python -m automower_ble.mower --address D8:B6:73:40:07:37 --command park
+python -m husqvarna_automower_ble.mower --address D8:B6:73:40:07:37 --command park
 ```
 
 ### Available Commands:
@@ -45,7 +45,7 @@ python -m automower_ble.mower --address D8:B6:73:40:07:37 --command park
 
 ## Contributing
 
-If you'd like to contribute to this project, feel free to submit issues or pull requests on the [GitHub repository](https://github.com/Marbanz/AutoMower-BLE). Testing on different Automower models is especially appreciated!
+If you'd like to contribute to this project, feel free to submit issues or pull requests on the [GitHub repository](https://github.com/Marbanz/HusqvarnaAutoMower-BLE). Testing on different Automower models is especially appreciated!
 
 ---
 
