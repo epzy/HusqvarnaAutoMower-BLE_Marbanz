@@ -380,7 +380,7 @@ class BLEClient:
 
         logger.info("connecting to device...")
         self.client = BleakClient(
-            device, services=["98bd0001-0b0e-421a-84e5-ddbf75dc6de4"], use_cached=True
+            device, services=["98bd0001-0b0e-421a-84e5-ddbf75dc6de4"], use_cached=True, timeout=30
         )
         await self.client.connect()
         logger.info("connected")
@@ -464,7 +464,7 @@ class BLEClient:
     async def probe_gatts(self, device):
         logger.info("connecting to device...")
         client = BleakClient(
-            device, services=["98bd0001-0b0e-421a-84e5-ddbf75dc6de4"], use_cached=True
+            device, services=["98bd0001-0b0e-421a-84e5-ddbf75dc6de4"], use_cached=True, timeout=30
         )
 
         await client.connect()
