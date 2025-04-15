@@ -11,7 +11,7 @@ Details on the original reverse-engineering process are available here:
 
 ## Installation
 
-You can install this library directly from the repository:
+This library can be installed by:
 
 ```bash
 pip install husqvarna-automower-ble
