@@ -4,7 +4,6 @@ This sends requests and decodes responses. This is an example of
 how the request and response classes can be used.
 """
 
-# Copyright: Alistair Francis <alistair@alistair23.me>
 
 import argparse
 import asyncio
