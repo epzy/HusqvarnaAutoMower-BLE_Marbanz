@@ -1,4 +1,3 @@
-# Copyright: Alistair Francis <alistair@alistair23.me>
 
 
 def crc(data: bytearray, offset: int, length: int) -> int:
